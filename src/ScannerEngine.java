@@ -16,16 +16,19 @@ public class ScannerEngine {
     public ScannerEngine(ScanConfig config) {
         this.config = config;
 
+        // Increased worker threads to 300
         this.executor = new ThreadPoolExecutor(
-                100,
-                100,
+                300,   // corePoolSize
+                300,   // maximumPoolSize
                 0L,
                 TimeUnit.MILLISECONDS,
                 new ArrayBlockingQueue<>(5000),
                 new ThreadPoolExecutor.CallerRunsPolicy()
         );
 
-        this.rateLimiter = new SimpleRateLimiter(Math.min(config.rateLimitPerSecond, 2000));
+        // Increased rate limit to 1000/sec (capped at 2000 by design)
+        int configuredRate = Math.min(1000, 2000);
+        this.rateLimiter = new SimpleRateLimiter(configuredRate);
     }
 
     public ScanReport execute() {
@@ -70,9 +73,12 @@ public class ScannerEngine {
         sortedHosts.sort(Comparator.comparingLong(this::ipToLong));
 
         for (String host : sortedHosts) {
-            Map<Integer, ScanResult> portMap = results.getOrDefault(host, new ConcurrentHashMap<>());
+            Map<Integer, ScanResult> portMap =
+                    results.getOrDefault(host, new ConcurrentHashMap<>());
 
-            List<ScanResult> sortedPorts = new ArrayList<>(portMap.values());
+            List<ScanResult> sortedPorts =
+                    new ArrayList<>(portMap.values());
+
             sortedPorts.sort(Comparator.comparingInt(r -> r.port));
 
             hostReports.add(new HostReport(host, sortedPorts));
@@ -102,14 +108,23 @@ public class ScannerEngine {
 
         private void attempt() {
             int attempts = 0;
+
             while (attempts < 2) {
                 attempts++;
 
                 try (Socket socket = new Socket()) {
+
+                    // Rate limit applied immediately before connect
                     rateLimiter.acquire();
-                    socket.connect(new InetSocketAddress(ip, port), config.connectTimeoutMs);
+
+                    socket.connect(
+                            new InetSocketAddress(ip, port),
+                            config.connectTimeoutMs
+                    );
+
                     socket.setSoTimeout(config.readTimeoutMs);
 
+                    // If we reach here, connection succeeded
                     aliveHosts.add(ip);
 
                     String banner = readBanner(socket);
@@ -123,11 +138,16 @@ public class ScannerEngine {
                     return;
 
                 } catch (SocketTimeoutException e) {
+                    // Retry only on connect timeout
                     if (attempts >= 2) return;
+
                 } catch (ConnectException e) {
+                    // Connection refused → host alive
                     aliveHosts.add(ip);
                     return;
+
                 } catch (Exception e) {
+                    // Other errors → ignore and continue
                     return;
                 }
             }
