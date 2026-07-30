@@ -1,26 +1,20 @@
+import org.junit.jupiter.api.Test;
+
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class RateLimiterLifecycleTest {
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-    public static void main(String[] args) throws Exception {
-        rejectsInvalidRate();
-        preservesInterruption();
-        closeStopsPermitRefill();
-        closeIsIdempotent();
+class RateLimiterLifecycleTest {
 
-        System.out.println("RateLimiterLifecycleTest passed");
+    @Test
+    void rejectsInvalidRate() {
+        assertThrows(IllegalArgumentException.class, () -> new SimpleRateLimiter(0));
     }
 
-    private static void rejectsInvalidRate() {
-        try {
-            new SimpleRateLimiter(0);
-            throw new AssertionError("Expected a zero rate to be rejected");
-        } catch (IllegalArgumentException expected) {
-            // Expected.
-        }
-    }
-
-    private static void preservesInterruption() throws Exception {
+    @Test
+    void preservesInterruption() throws Exception {
         SimpleRateLimiter limiter = new SimpleRateLimiter(1);
         try {
             assertTrue(limiter.acquire(), "Initial permit should be available");
@@ -46,7 +40,8 @@ public class RateLimiterLifecycleTest {
         }
     }
 
-    private static void closeStopsPermitRefill() throws Exception {
+    @Test
+    void closeStopsPermitRefill() throws Exception {
         SimpleRateLimiter limiter = new SimpleRateLimiter(1);
         assertTrue(limiter.acquire(), "Initial permit should be available");
         limiter.close();
@@ -66,7 +61,8 @@ public class RateLimiterLifecycleTest {
         assertFalse(acquired.get(), "No permit should be acquired after close");
     }
 
-    private static void closeIsIdempotent() {
+    @Test
+    void closeIsIdempotent() {
         SimpleRateLimiter limiter = new SimpleRateLimiter(1);
         limiter.close();
         limiter.close();
@@ -81,15 +77,5 @@ public class RateLimiterLifecycleTest {
 
         assertTrue(thread.getState() == Thread.State.WAITING,
                 "Permit waiter did not block within the expected time");
-    }
-
-    private static void assertTrue(boolean condition, String message) {
-        if (!condition) {
-            throw new AssertionError(message);
-        }
-    }
-
-    private static void assertFalse(boolean condition, String message) {
-        assertTrue(!condition, message);
     }
 }

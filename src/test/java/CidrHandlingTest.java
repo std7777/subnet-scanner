@@ -1,16 +1,12 @@
-public class CidrHandlingTest {
+import org.junit.jupiter.api.Test;
 
-    public static void main(String[] args) {
-        normalizesHostAddressToNetwork();
-        handlesPointToPointNetwork();
-        handlesSingleHostNetwork();
-        rejectsNonIpv4Targets();
-        rejectsMalformedTargets();
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-        System.out.println("CidrHandlingTest passed");
-    }
+class CidrHandlingTest {
 
-    private static void normalizesHostAddressToNetwork() {
+    @Test
+    void normalizesHostAddressToNetwork() {
         ScanConfig config = ScanConfig.fromCidr("192.168.1.100/24");
 
         assertEquals("192.168.1.0", config.networkAddress.getHostAddress());
@@ -19,7 +15,8 @@ public class CidrHandlingTest {
         assertEquals(254L, config.scanHostCount());
     }
 
-    private static void handlesPointToPointNetwork() {
+    @Test
+    void handlesPointToPointNetwork() {
         ScanConfig config = ScanConfig.fromCidr("10.0.0.11/31");
 
         assertEquals("10.0.0.10", config.networkAddress.getHostAddress());
@@ -28,7 +25,8 @@ public class CidrHandlingTest {
         assertEquals(2L, config.scanHostCount());
     }
 
-    private static void handlesSingleHostNetwork() {
+    @Test
+    void handlesSingleHostNetwork() {
         ScanConfig config = ScanConfig.fromCidr("10.0.0.11/32");
 
         assertEquals("10.0.0.11", config.networkAddress.getHostAddress());
@@ -37,12 +35,14 @@ public class CidrHandlingTest {
         assertEquals(1L, config.scanHostCount());
     }
 
-    private static void rejectsNonIpv4Targets() {
+    @Test
+    void rejectsNonIpv4Targets() {
         assertRejected("localhost/32");
         assertRejected("::1/32");
     }
 
-    private static void rejectsMalformedTargets() {
+    @Test
+    void rejectsMalformedTargets() {
         assertRejected("192.168.1.256/24");
         assertRejected("192.168.1/24");
         assertRejected("192.168.1.1/");
@@ -52,23 +52,6 @@ public class CidrHandlingTest {
     }
 
     private static void assertRejected(String cidr) {
-        try {
-            ScanConfig.fromCidr(cidr);
-            throw new AssertionError("Expected CIDR to be rejected: " + cidr);
-        } catch (IllegalArgumentException expected) {
-            // Expected.
-        }
-    }
-
-    private static void assertEquals(long expected, long actual) {
-        if (expected != actual) {
-            throw new AssertionError("Expected " + expected + " but got " + actual);
-        }
-    }
-
-    private static void assertEquals(String expected, String actual) {
-        if (!expected.equals(actual)) {
-            throw new AssertionError("Expected " + expected + " but got " + actual);
-        }
+        assertThrows(IllegalArgumentException.class, () -> ScanConfig.fromCidr(cidr));
     }
 }
