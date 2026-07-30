@@ -32,14 +32,21 @@ public class ScannerEngine {
     }
 
     public ScanReport execute() {
-        submitJobs();
-        executor.shutdown();
-
         try {
-            executor.awaitTermination(7, TimeUnit.DAYS);
+            submitJobs();
+            executor.shutdown();
+
+            if (!executor.awaitTermination(7, TimeUnit.DAYS)) {
+                executor.shutdownNow();
+            }
         } catch (InterruptedException e) {
             executor.shutdownNow();
             Thread.currentThread().interrupt();
+        } finally {
+            if (!executor.isShutdown()) {
+                executor.shutdownNow();
+            }
+            rateLimiter.close();
         }
 
         return buildReport();
@@ -110,7 +117,9 @@ public class ScannerEngine {
                 try (Socket socket = new Socket()) {
 
                     // Rate limit applied immediately before connect
-                    rateLimiter.acquire();
+                    if (!rateLimiter.acquire()) {
+                        return;
+                    }
 
                     socket.connect(
                             new InetSocketAddress(ip, port),
