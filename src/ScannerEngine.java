@@ -46,18 +46,13 @@ public class ScannerEngine {
     }
 
     private void submitJobs() {
-        long totalHosts = 1L << (32 - config.prefixLength);
-        long usableHosts = totalHosts;
-
         long base = ipToLong(config.networkAddress);
+        long firstHostOffset = config.firstHostOffset();
+        long scanHostCount = config.scanHostCount();
+        long endHostOffset = firstHostOffset + scanHostCount;
 
-        for (long i = 0; i < usableHosts; i++) {
+        for (long i = firstHostOffset; i < endHostOffset; i++) {
             long ipLong = base + i;
-
-            if (config.prefixLength != 32) {
-                if (i == 0 || i == usableHosts - 1) continue;
-            }
-
             String ip = longToIp(ipLong);
 
             for (int port = config.startPort; port <= config.endPort; port++) {
