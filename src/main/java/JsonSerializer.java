@@ -1,50 +1,25 @@
-import java.util.*;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import io.github.std7777.subnetscanner.evidence.ObservationReport;
 
-public class JsonSerializer {
+public final class JsonSerializer {
 
-    public static String toJson(ScanReport report) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("{");
-        sb.append("\"scanTimestamp\":\"").append(report.scanTimestamp).append("\",");
-        sb.append("\"hosts\":[");
+    private static final JsonMapper MAPPER = JsonMapper.builder()
+            .addModule(new JavaTimeModule())
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+            .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
+            .build();
 
-        for (int i = 0; i < report.hosts.size(); i++) {
-            HostReport host = report.hosts.get(i);
-
-            sb.append("{");
-            sb.append("\"ip\":\"").append(host.ip).append("\",");
-            sb.append("\"status\":\"up\",");
-            sb.append("\"ports\":[");
-
-            for (int j = 0; j < host.ports.size(); j++) {
-                ScanResult r = host.ports.get(j);
-
-                sb.append("{");
-                sb.append("\"port\":").append(r.port).append(",");
-                sb.append("\"service\":\"").append(r.service).append("\",");
-                sb.append("\"banner\":");
-
-                if (r.banner == null) {
-                    sb.append("null");
-                } else {
-                    sb.append("\"").append(escape(r.banner)).append("\"");
-                }
-
-                sb.append("}");
-
-                if (j < host.ports.size() - 1) sb.append(",");
-            }
-
-            sb.append("]}");
-
-            if (i < report.hosts.size() - 1) sb.append(",");
-        }
-
-        sb.append("]}");
-        return sb.toString();
+    private JsonSerializer() {
     }
 
-    private static String escape(String s) {
-        return s.replace("\\", "\\\\").replace("\"", "\\\"");
+    public static String toJson(ObservationReport report) {
+        try {
+            return MAPPER.writeValueAsString(report);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Failed to serialize observation report", e);
+        }
     }
 }

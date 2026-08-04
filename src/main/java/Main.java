@@ -1,5 +1,7 @@
 import java.time.Instant;
 
+import io.github.std7777.subnetscanner.evidence.ObservationReport;
+
 public class Main {
 
     public static void main(String[] args) {
@@ -15,8 +17,10 @@ public class Main {
 
             System.err.println("Scan started: " + Instant.now());
 
+            Instant startedAt = Instant.now();
             ScannerEngine engine = new ScannerEngine(config);
-            ScanReport report = engine.execute();
+            ScanReport legacyReport = engine.execute();
+            ObservationReport report = NetworkScanReportMapper.from(legacyReport, config, startedAt);
 
             System.err.println("Scan finished: " + Instant.now());
 
